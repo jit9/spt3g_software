@@ -102,6 +102,11 @@ find_package(FFTW)
 find_package(HDF5)
 find_package(MPI)
 
+# Useful options
+if(G3TIMESTREAM_DOUBLE_PRECISION)
+	add_compile_definitions(G3TIMESTREAM_DOUBLE_PRECISION)
+endif()
+
 # Convenience macros
 macro(link_python_dir)
 	execute_process(COMMAND mkdir -p ${CMAKE_LIBRARY_OUTPUT_DIRECTORY})

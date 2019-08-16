@@ -14,7 +14,7 @@
 template<typename A>
 struct FlacDecoderCallbackArgs {
 	A *inbuf;
-	std::vector<double> *outbuf;
+	std::vector<G3Timestream::value_type> *outbuf;
 	size_t pos;
 	size_t nbytes;
 };
@@ -23,6 +23,12 @@ enum FLACNaNFlag {
 	NoNan = 0,
 	AllNan = 1,
 	SomeNan = 2
+};
+
+enum OnDiskDataFormat {
+	DoublePrec = 0,
+	FLAC = 1,
+	SinglePrec = 2,
 };
 
 static FLAC__StreamEncoderWriteStatus flac_encoder_write_cb(
@@ -101,15 +107,25 @@ template <class A> void G3Timestream::save(A &ar, unsigned v) const
 	ar & cereal::make_nvp("units", units);
 	ar & cereal::make_nvp("start", start);
 	ar & cereal::make_nvp("stop", stop);
-	ar & cereal::make_nvp("flac", use_flac_);
+
+#ifdef G3TIMESTREAM_DOUBLE_PRECISION
+	uint8_t on_disk = DoublePrec;
+#else
+	uint8_t on_disk = SinglePrec;
+#endif
+	if (use_flac_)
+		on_disk = FLAC;
+	ar & cereal::make_nvp("format", on_disk);
 
 #ifdef G3_HAS_FLAC
-	if (use_flac_) {
+	if (on_disk == FLAC) {
 		std::vector<int32_t> inbuf;
 		std::vector<uint8_t> outbuf;
 		const int32_t *chanmap[1];
 		uint8_t nanflag;
 		size_t nans = 0;
+
+		ar & cereal::make_nvp("flac_level", use_flac_);
 
 		if (units != Counts)
 			log_fatal("Cannot use FLAC on non-counts timestreams");
@@ -161,7 +177,7 @@ template <class A> void G3Timestream::save(A &ar, unsigned v) const
 	} else {
 #endif
 		ar & cereal::make_nvp("data",
-		    cereal::base_class<std::vector<double> >(this));
+		    cereal::base_class<std::vector<value_type> >(this));
 #ifdef G3_HAS_FLAC
 	}
 #endif
@@ -178,9 +194,19 @@ template <class A> void G3Timestream::load(A &ar, unsigned v)
 		ar & cereal::make_nvp("start", start);
 		ar & cereal::make_nvp("stop", stop);
 	}
-	ar & cereal::make_nvp("flac", use_flac_);
 
-	if (use_flac_) {
+	uint8_t on_disk;
+	use_flac_ = false;
+	if (v >= 3) {
+		ar & cereal::make_nvp("format", on_disk);
+		if (on_disk == FLAC)
+			ar & cereal::make_nvp("flac_level", use_flac_);
+	} else {
+		ar & cereal::make_nvp("flac", use_flac_);
+		on_disk = (use_flac_) ? FLAC : DoublePrec;
+	}
+
+	if (on_disk == FLAC) {
 #ifdef G3_HAS_FLAC
 		FlacDecoderCallbackArgs<A> callback;
 		uint8_t nanflag;
@@ -224,9 +250,29 @@ template <class A> void G3Timestream::load(A &ar, unsigned v)
 #else
 		log_fatal("Trying to read FLAC-compressed timestreams but built without FLAC support");
 #endif
-	} else {
+#ifdef G3TIMESTREAM_DOUBLE_PRECISION
+	} else if (on_disk == DoublePrec) {
 		ar & cereal::make_nvp("data",
 		    cereal::base_class<std::vector<double> >(this));
+	} else if (on_disk == SinglePrec) {
+		std::vector<float> single;
+		ar & cereal::make_nvp("data", single);
+		resize(single.size());
+		for (size_t i = 0; i < single.size(); i++)
+			(*this)[i] = single[i];
+#else
+	} else if (on_disk == DoublePrec) {
+		std::vector<double> doublep;
+		ar & cereal::make_nvp("data", doublep);
+		resize(doublep.size());
+		for (size_t i = 0; i < doublep.size(); i++)
+			(*this)[i] = doublep[i];
+	} else if (on_disk == SinglePrec) {
+		ar & cereal::make_nvp("data",
+		    cereal::base_class<std::vector<float> >(this));
+#endif
+	} else {
+		log_fatal("On-disk data format (%d) not supported!", on_disk);
 	}
 }
 
@@ -585,11 +631,15 @@ G3TimestreamMap_getbuffer(PyObject *obj, Py_buffer *view, int flags)
 	}
 
 	view->obj = obj;
-	view->len = ts->size() * ts->begin()->second->size() * sizeof(double);
+	view->len = ts->size() * ts->begin()->second->size() * sizeof(G3Timestream::value_type);
 	view->readonly = 0;
-	view->itemsize = sizeof(double);
+	view->itemsize = sizeof(G3Timestream::value_type);
 	if (flags & PyBUF_FORMAT)
+#ifdef G3TIMESTREAM_DOUBLE_PRECISION
 		view->format = (char *)"d";
+#else
+		view->format = (char *)"f";
+#endif
 	else
 		view->format = NULL;
 	view->ndim = 2;
@@ -614,18 +664,20 @@ G3TimestreamMap_getbuffer(PyObject *obj, Py_buffer *view, int flags)
 		// do we even have a way to freeze the buffer locations.
 
 		view->strides = new Py_ssize_t[2];
-		view->strides[0] = sizeof(double *);
-		view->strides[1] = sizeof(double);
+		view->strides[0] = sizeof(G3Timestream::value_type *);
+		view->strides[1] = sizeof(G3Timestream::value_type);
 
 		view->suboffsets = new Py_ssize_t[2];
 		view->suboffsets[0] = 0;
 		view->suboffsets[1] = -1;
 
-		view->buf = malloc(sizeof(double *)*ts->size());
+		view->buf =
+		    malloc(sizeof(G3Timestream::value_type *)*ts->size());
 
 		int j = 0;
 		for (auto i : (*ts))
-			((double **)(view->buf))[j++] = &(*i.second)[0];
+			((G3Timestream::value_type **)(view->buf))[j++] =
+			    &(*i.second)[0];
 	} else {
 		// To honor a contiguous buffer request, make a copy of the
 		// data. This violates the spirit of the buffer protocol
@@ -694,6 +746,7 @@ timestream_from_iterable(boost::python::object v,
 	Py_buffer view;
 	if (PyObject_GetBuffer(v.ptr(), &view,
 	    PyBUF_FORMAT | PyBUF_ANY_CONTIGUOUS) != -1) {
+#ifdef G3TIMESTREAM_DOUBLE_PRECISION
 		if (strcmp(view.format, "d") == 0) {
 			x->insert(x->begin(), (double *)view.buf,
 			    (double *)view.buf + view.len/sizeof(double));
@@ -701,6 +754,15 @@ timestream_from_iterable(boost::python::object v,
 			x->resize(view.len/sizeof(float));
 			for (size_t i = 0; i < view.len/sizeof(float); i++)
 				(*x)[i] = ((float *)view.buf)[i];
+#else
+		if (strcmp(view.format, "f") == 0) {
+			x->insert(x->begin(), (float *)view.buf,
+			    (float *)view.buf + view.len/sizeof(float));
+		} else if (strcmp(view.format, "d") == 0) {
+			x->resize(view.len/sizeof(double));
+			for (size_t i = 0; i < view.len/sizeof(double); i++)
+				(*x)[i] = ((double *)view.buf)[i];
+#endif
 		} else {
 			// We could add more types, but why do that?
 			// Let Python do the work for obscure cases
@@ -732,11 +794,15 @@ G3Timestream_getbuffer(PyObject *obj, Py_buffer *view, int flags)
 	G3TimestreamPtr ts = boost::python::extract<G3TimestreamPtr>(selfobj)();
 	view->obj = obj;
 	view->buf = (void*)&(*ts)[0];
-	view->len = ts->size() * sizeof(double);
+	view->len = ts->size() * sizeof(G3Timestream::value_type);
 	view->readonly = 0;
-	view->itemsize = sizeof(double);
+	view->itemsize = sizeof(G3Timestream::value_type);
 	if (flags & PyBUF_FORMAT)
+#ifdef G3TIMESTREAM_DOUBLE_PRECISION
 		view->format = (char *)"d";
+#else
+		view->format = (char *)"f";
+#endif
 	else
 		view->format = NULL;
 	view->ndim = 1;

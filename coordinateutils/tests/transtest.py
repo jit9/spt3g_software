@@ -36,14 +36,14 @@ b_test = g.b.radian
 
 def wrap_ring(a):
     np.asarray(a)[np.where(a > np.pi)] -= 2*np.pi
-def sloppy_eq(f,g, eps = 1e-5):
+def sloppy_eq(f,g, eps = 2e-5):
     return np.abs(f-g) < eps
 
 
 for i in range(n_samps):
-    t_ra_0, t_dec_0 = coordinateutils.test_trans( az_0[i], el_0[i], ra_0[i], dec_0[i], 
-                                            az_1[i], el_1[i], ra_1[i], dec_1[i],
-                                            az_0[i], el_0[i])
+    t_ra_0, t_dec_0 = coordinateutils.test_trans( float(az_0[i]), float(el_0[i]), float(ra_0[i]), float(dec_0[i]), 
+                                            float(az_1[i]), float(el_1[i]), float(ra_1[i]), float(dec_1[i]),
+                                            float(az_0[i]), float(el_0[i]))
     if t_ra_0 <0:
         t_ra_0 += 2*np.pi
     if not sloppy_eq(t_ra_0, ra_0[i]):
@@ -59,9 +59,9 @@ for i in range(n_samps):
               az_0[i], el_0[i])
         assert(0)        
 
-    t_ra_1, t_dec_1 = coordinateutils.test_trans( az_0[i], el_0[i], ra_0[i], dec_0[i], 
-                                                   az_1[i], el_1[i], ra_1[i], dec_1[i],
-                                                   az_1[i], el_1[i])
+    t_ra_1, t_dec_1 = coordinateutils.test_trans( float(az_0[i]), float(el_0[i]), float(ra_0[i]), float(dec_0[i]), 
+                                            float(az_1[i]), float(el_1[i]), float(ra_1[i]), float(dec_1[i]),
+                                            float(az_1[i]), float(el_1[i]))
     if t_ra_1 <0:
         t_ra_1 += 2*np.pi
 
@@ -76,9 +76,9 @@ for i in range(n_samps):
               az_1[i], el_1[i], ra_1[i], dec_1[i])
         assert(0)        
 
-    t_ra_o, t_dec_o = coordinateutils.test_trans( az_0[i], el_0[i], ra_0[i], dec_0[i], 
-                                           az_1[i], el_1[i], ra_1[i], dec_1[i],
-                                           o_az_0[i], o_el_0[i])
+    t_ra_o, t_dec_o = coordinateutils.test_trans( float(az_0[i]), float(el_0[i]), float(ra_0[i]), float(dec_0[i]), 
+                                            float(az_1[i]), float(el_1[i]), float(ra_1[i]), float(dec_1[i]),
+                                            float(o_az_0[i]), float(o_el_0[i]))
     if t_ra_o <0:
         t_ra_o += 2*np.pi
     if not sloppy_eq(t_ra_o, o_ra_0[i]):
@@ -90,9 +90,9 @@ for i in range(n_samps):
 
 
         
-    t_l_o, t_b_o = coordinateutils.test_gal_trans( az_0[i], el_0[i], ra_0[i], dec_0[i], 
-                                            az_1[i], el_1[i], ra_1[i], dec_1[i],
-                                            o_az_0[i], o_el_0[i])
+    t_l_o, t_b_o = coordinateutils.test_gal_trans( float(az_0[i]), float(el_0[i]), float(ra_0[i]), float(dec_0[i]), 
+                                            float(az_1[i]), float(el_1[i]), float(ra_1[i]), float(dec_1[i]),
+                                            float(o_az_0[i]), float(o_el_0[i]))
 
     if t_l_o < 0:
         t_l_o += 2*np.pi

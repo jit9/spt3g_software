@@ -7,7 +7,11 @@
 #include <vector>
 #include <map>
 
+#ifdef G3TIMESTREAM_DOUBLE_PRECISION
 class G3Timestream : public G3Vector<double> {
+#else
+class G3Timestream : public G3Vector<float> {
+#endif
 public:
 	enum TimestreamUnits {
 		None = 0,
@@ -18,17 +22,17 @@ public:
 		Tcmb = 4,
 	};
 
-	G3Timestream() : G3Vector<double>(), units(None), use_flac_(0) {}
-	G3Timestream(std::vector<double>::size_type s) : G3Vector<double>(s),
+	G3Timestream() : G3Vector<value_type>(), units(None), use_flac_(0) {}
+	G3Timestream(std::vector<value_type>::size_type s) : G3Vector<value_type>(s),
 	    units(None), use_flac_(0) {}
-	G3Timestream(std::vector<double>::size_type s,
-	    const double &val) : G3Vector<double>(s, val), units(None),
+	G3Timestream(std::vector<value_type>::size_type s,
+	    const value_type &val) : G3Vector<value_type>(s, val), units(None),
 	    use_flac_(0) {}
-	G3Timestream(const G3Timestream &r) : G3Vector<double>(r),
+	G3Timestream(const G3Timestream &r) : G3Vector<value_type>(r),
 	    units(r.units), start(r.start), stop(r.stop),
 	    use_flac_(r.use_flac_) {}
 	template <typename Iterator> G3Timestream(Iterator l, Iterator r) :
-	    G3Vector<double>(l, r), units(None), use_flac_(0) {}
+	    G3Vector<value_type>(l, r), units(None), use_flac_(0) {}
 
 	// FLAC compression levels range from 0-9. 0 means do not use FLAC.
 	void SetFLACCompression(int compression_level);
@@ -90,7 +94,7 @@ namespace cereal {
 	template <class A> struct specialize<A, G3TimestreamMap, cereal::specialization::member_serialize> {};
 }
 
-G3_SERIALIZABLE(G3Timestream, 2);
+G3_SERIALIZABLE(G3Timestream, 3);
 G3_SERIALIZABLE(G3TimestreamMap, 3);
 
 #endif

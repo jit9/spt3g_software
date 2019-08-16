@@ -10,8 +10,8 @@ ts.stop = core.G3Time(10*core.G3Units.s)
 
 assert(ts[5] == 0) # Check scalar getitem
 
-ts[12] = 13.4 # Check scalar setitem
-assert(ts[12] == 13.4)
+ts[12] = 13.5 # Check scalar setitem
+assert(ts[12] == 13.5)
 
 ts[:] = numpy.arange(50) # Test vector setitem
 assert(ts[12]) == 12.0

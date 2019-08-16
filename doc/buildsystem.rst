@@ -19,6 +19,9 @@ A number of variables can be set on the command line when cmake is run that cont
   CMAKE_BUILD_TYPE
     This can be set to either ``Release`` or ``Debug``. Setting it to ``Release`` will cause the compiler to optimize the code more, making it substantially faster at the expense of increased build times and removal of some debugging information.
 
+  G3TIMESTREAM_DOUBLE_PRECISION
+    If set to ``True``, ``On``, ``1``, or anything else cmake considers true, will cause G3Timestream to use double- instead of single-precision floating point. This can reduce round-off error slightly at the expense of doubling RAM usage.
+
 Adding a Project
 ================
 
