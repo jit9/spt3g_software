@@ -23,6 +23,7 @@ add_library(core SHARED
 	src/crc32.c ${CORE_EXTRA_SRCS}
 	src/G3NetworkSender.cxx src/G3SyslogLogger.cxx
 	src/G3PipelineInfo.cxx src/G3Quat.cxx
+        src/G3MemoryLeaker.cxx
 )
 target_link_libraries(core pthread ${Boost_LIBRARIES} ${PYTHON_LIBRARIES} ${FLAC_LIBRARIES})
 link_python_dir()

@@ -168,3 +168,6 @@ add_custom_target(docs
 	COMMAND mkdir -p ${CMAKE_BINARY_DIR}/docs
 	COMMAND which sphinx-build && sphinx-build -b html ${CMAKE_SOURCE_DIR}/doc ${CMAKE_BINARY_DIR}/docs || echo "Error: sphinx-build not found. Could not generate HTML docs."
 	COMMENT "Generate HTML documentation")
+
+add_executable(test_memory_leak examples/test_memory_leak.cxx)
+target_link_libraries(test_memory_leak core)
